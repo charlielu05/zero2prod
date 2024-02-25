@@ -1,9 +1,12 @@
+use sqlx::{Connection, PgConnection};
 use std::net::TcpListener;
+use zero2prod::configuration;
 
 fn spawn_app() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").expect("failed to bind random port");
     let port = listener.local_addr().unwrap().port();
-    let server = zero2prod::startup::run(listener).expect("failed to bind port");
+
+    let server = zero2prod::startup::run(listener, connection).expect("failed to bind port");
     // launch server as background task
     let _ = tokio::spawn(server);
     // return port to caller
@@ -31,6 +34,11 @@ async fn health_check_works() {
 #[tokio::test]
 async fn subscribe_returns_a_200_for_valid_forms_data() {
     let address = spawn_app();
+    let configuration = configuration::get_configuration().expect("Failed to read configuration");
+    let connection_string: String = configuration.database.connection_string();
+    let mut connection = PgConnection::connect(&connection_string)
+        .await
+        .expect("Failed to connect to Postgres.");
     // use reqwest to perform http resquests against app
     let client = reqwest::Client::new();
 
@@ -46,6 +54,11 @@ async fn subscribe_returns_a_200_for_valid_forms_data() {
 
     // Assert
     assert_eq!(200, response.status().as_u16());
+
+    let saved = sqlx::query!("SELECT email, name FROM subscriptions")
+        .fetch_one(&mut connection)
+        .await
+        .expect("Failed to fetch saved subscription");
 }
 
 #[tokio::test]
