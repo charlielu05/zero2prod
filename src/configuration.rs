@@ -24,7 +24,7 @@ pub struct DatabaseSettings {
     pub port: u16,
     pub host: String,
     pub database_name: String,
-    pub requires_ssl: bool,
+    pub require_ssl: bool,
 }
 
 impl DatabaseSettings {
@@ -33,7 +33,7 @@ impl DatabaseSettings {
     }
 
     pub fn without_db(&self) -> PgConnectOptions {
-        let ssl_mode = if self.requires_ssl {
+        let ssl_mode = if self.require_ssl {
             PgSslMode::Require
         } else {
             PgSslMode::Prefer
